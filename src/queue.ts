@@ -72,7 +72,7 @@ export class Queue {
    * @param opts - Message options.
    * @returns A promise that resolves to the ID and ack of the message.
    */
-  async add(payload: any, opts?: { delay?: number }): Promise<{ messageId: string; ack: string }> {
+  async add(payload: any, opts?: { delay?: number }): Promise<{ _id: string; ack: string; payload: any }> {
     const delay = opts?.delay ?? this.delay
     const visible = delay ? nowPlusSecs(delay) : now()
 
@@ -85,8 +85,9 @@ export class Queue {
     const result = await this.collection.insertOne(msg)
 
     return {
-      messageId: result.insertedId.toHexString(),
+      _id: result.insertedId.toHexString(),
       ack: msg.ack,
+      payload: msg.payload,
     }
   }
 
@@ -99,7 +100,7 @@ export class Queue {
    *
    * @throws Will throw an error if the insertion fails.
    */
-  async addMany(payloads: any[], opts?: { delay?: number }): Promise<{ messageIds: string[]; acks: string[] }> {
+  async addMany(payloads: any[], opts?: { delay?: number }): Promise<Array<{ _id: string; ack: string; payload: any }>> {
     const delay = opts?.delay ?? this.delay
     const visible = delay ? nowPlusSecs(delay) : now()
     const msgs = payloads.map(payload => ({
@@ -111,10 +112,11 @@ export class Queue {
     try {
       const results = await this.collection.insertMany(msgs)
 
-      const messageIds = Object.values(results.insertedIds).map(id => id.toHexString())
-      const acks = msgs.map(msg => msg.ack)
-
-      return { messageIds, acks }
+      return msgs.map((msg, index) => ({
+        _id: results.insertedIds[index].toHexString(),
+        ack: msg.ack,
+        payload: msg.payload,
+      }))
     } catch (error: any) {
       throw new Error(`Failed to insert many messages: ${error.message}`)
     }

@@ -79,7 +79,7 @@ describe('Queue', () => {
       insertedId: new ObjectId(),
     })
 
-    const { messageId, ack } = await queue.add(payload)
+    const { _id, ack, payload: resultPayload } = await queue.add(payload)
 
     expect(collectionMock.insertOne).toHaveBeenCalledWith({
       visible: expect.any(String),
@@ -87,25 +87,29 @@ describe('Queue', () => {
       ack: expect.any(String),
     })
 
-    expect(messageId).toBeDefined()
+    expect(_id).toBeDefined()
     expect(ack).toBeDefined()
+    expect(payload).toEqual(resultPayload)
   })
 
   it('should add multiple messages to the queue', async () => {
     const payloads = [{ data: 'test1' }, { data: 'test2' }]
 
-    collectionMock.insertMany.mockResolvedValueOnce({
+    const mockResolve = {
       insertedIds: {
         '0': new ObjectId(),
         '1': new ObjectId(),
       },
-    })
+    }
+    collectionMock.insertMany.mockResolvedValueOnce(mockResolve)
 
-    const { messageIds, acks } = await queue.addMany(payloads)
+    const result = await queue.addMany(payloads)
 
     expect(collectionMock.insertMany).toHaveBeenCalledWith(expect.any(Array))
-    expect(messageIds.length).toBe(2)
-    expect(acks.length).toBe(2)
+    expect(result.length).toBe(2)
+
+    expect(result[0]._id).toBe(mockResolve.insertedIds[0].toHexString())
+    expect(result[1]._id).toBe(mockResolve.insertedIds[1].toHexString())
   })
 
   it('should acknowledge a message', async () => {
