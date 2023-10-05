@@ -27,7 +27,8 @@
     "test:verbose": "yarn test --verbose",
     "test:troubleshoot": "node ./node_modules/.bin/jest --no-cache --logHeapUsage --detectOpenHandles --detectLeaks --runInBand",
     "test:watch": "yarn test --watch",
-    "test:coverage": "yarn test --coverage --coverageReporters=html"
+    "test:coverage": "yarn test --coverage --coverageReporters=html",
+    "test:threshold": "jest --coverage --coverageThreshold='{\"global\":{\"branches\":80,\"functions\":100,\"lines\":95,\"statements\":95}}'"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.4",
