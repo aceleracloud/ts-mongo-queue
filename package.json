@@ -1,6 +1,6 @@
 {
   "name": "ts-mongo-queue",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "mongo-queue typescript implementation",
   "license": "MIT",
   "private": false,
