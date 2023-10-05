@@ -1,0 +1,7 @@
+**/*.sw*
+.idea
+node_modules
+dist
+lib
+coverage
+.nyc_output
