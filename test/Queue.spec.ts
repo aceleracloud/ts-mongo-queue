@@ -24,43 +24,25 @@ const dbMock = {
   })),
 }
 
-const MongoClientMock = {
-  connect: jest.fn(),
-  db: jest.fn().mockReturnValue(dbMock),
-}
-
 describe('Queue', () => {
   let queue: Queue
 
   beforeEach(() => {
     jest.restoreAllMocks()
     jest.clearAllMocks()
-    queue = new Queue(MongoClientMock as any, 'test-queue')
+    queue = new Queue(dbMock as any, 'test-queue')
   })
 
   it('should throw an error if MongoClient is not connected', () => {
     expect(() => {
       new Queue(undefined as any, 'test-queue')
-    }).toThrow('MongoQueue: MongoClient must be connected.')
+    }).toThrow('MongoQueue: provide a mongodb.MongoClient.db')
   })
 
   it('should throw an error if queue name is not provided', () => {
     expect(() => {
-      new Queue(MongoClientMock as any, '')
+      new Queue(dbMock as any, '')
     }).toThrow('MongoQueue: Provide a queue name.')
-  })
-
-  it('should throw an error if MongoClient.db() call fails', () => {
-    MongoClientMock.db.mockImplementationOnce(() => {
-      throw new Error()
-    })
-    MongoClientMock.db.mockImplementationOnce(() => {
-      throw new Error()
-    })
-
-    expect(() => {
-      new Queue(MongoClientMock as any, 'test-queue')
-    }).toThrow('MongoQueue: MongoClient must be connected.')
   })
 
   it('should create indexes', async () => {
@@ -163,7 +145,7 @@ describe('Queue', () => {
       add: jest.fn(),
     }
 
-    queue = new Queue(MongoClientMock as any, 'test-queue', { deadQueue: deadQueueMock as any, maxRetries: 5 })
+    queue = new Queue(dbMock as any, 'test-queue', { deadQueue: deadQueueMock as any, maxRetries: 5 })
 
     collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
     collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })

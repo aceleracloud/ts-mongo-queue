@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection, FindOneAndUpdateOptions } from 'mongodb'
+import { Db, Collection, FindOneAndUpdateOptions } from 'mongodb'
 
 import { id, now, nowPlusSecs } from './helpers'
 import { GET_RECURSION_LIMIT } from './config'
@@ -13,25 +13,20 @@ export class Queue {
 
   /**
    * Constructs a new Mongo Queue.
-   * @param client - The MongoClient instance.
+   * @param db - The MongoClient instance.
    * @param name - The name of the queue.
    * @param opts - Queue options.
    */
-  constructor(client: MongoClient, name: string, opts?: { visibility?: number; delay?: number; deadQueue?: Queue; maxRetries?: number }) {
-    if (!client || !Queue.isConnected(client)) {
-      throw new Error('MongoQueue: MongoClient must be connected.')
+  constructor(db: Db, name: string, opts?: { visibility?: number; delay?: number; deadQueue?: Queue; maxRetries?: number }) {
+    if (!db || !Queue.isConnected(db)) {
+      throw new Error('MongoQueue: provide a mongodb.MongoClient.db')
     }
 
     if (!name) {
       throw new Error('MongoQueue: Provide a queue name.')
     }
 
-    try {
-      this.db = client.db()
-    } catch (err) {
-      throw new Error('MongoQueue: MongoClient must be connected.')
-    }
-
+    this.db = db
     this.collection = this.db.collection(name)
     this.visibility = opts?.visibility ?? 60
     this.delay = opts?.delay ?? 60
@@ -44,12 +39,12 @@ export class Queue {
 
   /**
    * Check if a MongoClient instance is connected.
-   * @param client - The MongoClient instance.
+   * @param db - The MongoClient Db.
    * @returns A promise that resolves to a boolean indicating if the client is connected.
    */
-  static async isConnected(client: MongoClient): Promise<boolean> {
+  static async isConnected(db: Db): Promise<boolean> {
     try {
-      const adminDb = client.db().admin()
+      const adminDb = db.admin()
       await adminDb.ping()
 
       return true
