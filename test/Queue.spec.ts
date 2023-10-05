@@ -74,6 +74,26 @@ describe('Queue', () => {
     expect(payload).toEqual(resultPayload)
   })
 
+  it('should add a message with delay to the queue', async () => {
+    const payload = { data: 'test' }
+
+    collectionMock.insertOne.mockResolvedValueOnce({
+      insertedId: new ObjectId(),
+    })
+
+    const { _id, ack, payload: resultPayload } = await queue.add(payload, { delay: 60 })
+
+    expect(collectionMock.insertOne).toHaveBeenCalledWith({
+      visible: expect.any(String),
+      payload: payload,
+      ack: expect.any(String),
+    })
+
+    expect(_id).toBeDefined()
+    expect(ack).toBeDefined()
+    expect(payload).toEqual(resultPayload)
+  })
+
   it('should add multiple messages to the queue', async () => {
     const payloads = [{ data: 'test1' }, { data: 'test2' }]
 
