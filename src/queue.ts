@@ -7,7 +7,7 @@ export class Queue {
   private db: Db
   private collection: Collection
   private visibility: number
-  private delay: number
+  private delay?: number
   private deadQueue?: Queue
   private maxRetries?: number
 
@@ -18,7 +18,7 @@ export class Queue {
    * @param opts - Queue options.
    */
   constructor(db: Db, name: string, opts?: { visibility?: number; delay?: number; deadQueue?: Queue; maxRetries?: number }) {
-    if (!db || !Queue.isConnected(db)) {
+    if (!db) {
       throw new Error('MongoQueue: provide a mongodb.MongoClient.db')
     }
 
@@ -29,27 +29,24 @@ export class Queue {
     this.db = db
     this.collection = this.db.collection(name)
     this.visibility = opts?.visibility ?? 60
-    this.delay = opts?.delay ?? 60
+    this.delay = opts?.delay
+    this.maxRetries = opts?.maxRetries ?? 5
 
     if (opts?.deadQueue) {
       this.deadQueue = opts.deadQueue
-      this.maxRetries = opts.maxRetries ?? 5
     }
   }
 
   /**
-   * Check if a MongoClient instance is connected.
-   * @param db - The MongoClient Db.
-   * @returns A promise that resolves to a boolean indicating if the client is connected.
+   * Retrieves the queue options.
+   * @returns The queue options.
    */
-  static async isConnected(db: Db): Promise<boolean> {
-    try {
-      const adminDb = db.admin()
-      await adminDb.ping()
-
-      return true
-    } catch (error) {
-      return false
+  getOptions() {
+    return {
+      visibility: this.visibility,
+      delay: this.delay,
+      deadQueue: this.deadQueue,
+      maxRetries: this.maxRetries,
     }
   }
 
@@ -104,17 +101,13 @@ export class Queue {
       ack: id(),
     }))
 
-    try {
-      const results = await this.collection.insertMany(msgs)
+    const results = await this.collection.insertMany(msgs)
 
-      return msgs.map((msg, index) => ({
-        _id: results.insertedIds[index].toHexString(),
-        ack: msg.ack,
-        payload: msg.payload,
-      }))
-    } catch (error: any) {
-      throw new Error(`Failed to insert many messages: ${error.message}`)
-    }
+    return msgs.map((msg, index) => ({
+      _id: results.insertedIds[index].toHexString(),
+      ack: msg.ack,
+      payload: msg.payload,
+    }))
   }
 
   /**
@@ -136,18 +129,14 @@ export class Queue {
     }
     const options: FindOneAndUpdateOptions = { returnDocument: 'after' }
 
-    try {
-      const result = await this.collection.findOneAndUpdate(query, update, options)
-      const msg = result?.value
+    const result = await this.collection.findOneAndUpdate(query, update, options)
+    const msg = result?.value
 
-      if (!msg) {
-        throw new Error(`Queue.ack(): Unidentified ack : ${ack}`)
-      }
-
-      return msg._id.toHexString()
-    } catch (error: any) {
-      throw new Error(`Failed to acknowledge message: ${error.message}`)
+    if (!msg) {
+      throw new Error(`Queue.ack(): Unidentified ack: ${ack}`)
     }
+
+    return msg._id.toHexString()
   }
 
   /**
@@ -180,29 +169,25 @@ export class Queue {
     }
     const options: FindOneAndUpdateOptions = { sort: { _id: 1 }, returnDocument: 'after' }
 
-    try {
-      const result = await this.collection.findOneAndUpdate(query, update, options)
-      const msg = result?.value
+    const result = await this.collection.findOneAndUpdate(query, update, options)
+    const msg = result?.value
 
-      if (!msg) return undefined
+    if (!msg) return undefined
 
-      const transformedMsg = {
-        id: msg._id.toHexString(),
-        ack: msg.ack,
-        payload: msg.payload,
-        tries: msg.tries,
-      }
-
-      if (this.deadQueue && transformedMsg.tries > (this.maxRetries ?? 5)) {
-        await this.deadQueue.add(transformedMsg)
-        await this.ack(transformedMsg.ack)
-        return await this.get(opts)
-      }
-
-      return transformedMsg
-    } catch (error: any) {
-      throw new Error(`Failed to get message: ${error.message}`)
+    const transformedMsg = {
+      id: msg._id.toHexString(),
+      ack: msg.ack,
+      payload: msg.payload,
+      tries: msg.tries,
     }
+
+    if (this.deadQueue && transformedMsg.tries > (this.maxRetries as number)) {
+      await this.deadQueue.add(transformedMsg)
+      await this.ack(transformedMsg.ack)
+      return await this.get(opts)
+    }
+
+    return transformedMsg
   }
 
   /**
@@ -217,7 +202,7 @@ export class Queue {
   async ping(ack: string, opts: { visibility?: number } = {}): Promise<string> {
     const visibility = opts.visibility ?? this.visibility
     const query = {
-      ack: ack,
+      ack,
       deleted: null,
     }
     const update = {
