@@ -175,10 +175,8 @@ describe('Queue', () => {
     const mockObjectId = new ObjectId()
 
     collectionMock.findOneAndUpdate.mockResolvedValueOnce({
-      value: {
-        _id: mockObjectId,
-        ack: mockAckToken,
-      },
+      _id: mockObjectId,
+      ack: mockAckToken,
     })
 
     const messageId = await queue.ack(mockAckToken)
@@ -196,7 +194,7 @@ describe('Queue', () => {
   })
 
   it('should throw an error if trying to acknowledge an ack with empty value', async () => {
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: null })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(null)
 
     const queue = new Queue(dbMock as any, 'test-queue')
 
@@ -214,7 +212,7 @@ describe('Queue', () => {
       tries: 1,
     }
 
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
 
     const result = await queue.get()
 
@@ -237,7 +235,7 @@ describe('Queue', () => {
       tries: 1,
     }
 
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
 
     const result = await queue.get({ visibility: 120 })
 
@@ -260,7 +258,7 @@ describe('Queue', () => {
       tries: 1,
     }
 
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
     await expect(queue.get({ retryCount: 501 })).rejects.toThrow('Reached maximum get retries')
   })
 
@@ -279,8 +277,8 @@ describe('Queue', () => {
 
     const queue = new Queue(dbMock as any, 'test-queue', { deadQueue: deadQueueMock as any, maxRetries: 5 })
 
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
 
     await queue.get()
 
@@ -304,7 +302,7 @@ describe('Queue', () => {
       tries: 1,
     }
 
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
 
     const result = await queue.ping(mockMsg.ack)
 
@@ -323,7 +321,7 @@ describe('Queue', () => {
       tries: 1,
     }
 
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: mockMsg })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
 
     const result = await queue.ping(mockMsg.ack, { visibility: 120 })
 
@@ -332,7 +330,7 @@ describe('Queue', () => {
   })
 
   it('should throw an error if trying to ping an unidentified ack', async () => {
-    collectionMock.findOneAndUpdate.mockResolvedValueOnce({ value: null })
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(null)
 
     const queue = new Queue(dbMock as any, 'test-queue')
 

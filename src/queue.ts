@@ -129,8 +129,7 @@ export class Queue {
     }
     const options: FindOneAndUpdateOptions = { returnDocument: 'after' }
 
-    const result = await this.collection.findOneAndUpdate(query, update, options)
-    const msg = result?.value
+    const msg = await this.collection.findOneAndUpdate(query, update, options)
 
     if (!msg) {
       throw new Error(`Queue.ack(): Unidentified ack: ${ack}`)
@@ -169,9 +168,7 @@ export class Queue {
     }
     const options: FindOneAndUpdateOptions = { sort: { _id: 1 }, returnDocument: 'after' }
 
-    const result = await this.collection.findOneAndUpdate(query, update, options)
-    const msg = result?.value
-
+    const msg = await this.collection.findOneAndUpdate(query, update, options)
     if (!msg) return undefined
 
     const transformedMsg = {
@@ -211,8 +208,7 @@ export class Queue {
       },
     }
 
-    const result = await this.collection.findOneAndUpdate(query, update, { returnDocument: 'after' })
-    const msg = result?.value
+    const msg = await this.collection.findOneAndUpdate(query, update, { returnDocument: 'after' })
 
     if (!msg) {
       throw new Error(`Queue.ping(): Unidentified ack: ${ack}`)
