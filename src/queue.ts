@@ -142,11 +142,13 @@ export class Queue {
    * Retrieves the next available message from the queue.
    * @param opts - Optional configuration object.
    * @param opts.visibility - Time in seconds the message should be hidden after being fetched.
+   * @param opts.retryCount - The number of retries for the get operation.
+   * @param opts.sorted - Whether to sort the messages by insertion order.
    * @returns The retrieved message or undefined if there's no available message.
    *
    * @throws Will throw an error if the fetching fails or if moving a dead message fails.
    */
-  async get(opts?: { visibility?: number; retryCount?: number }): Promise<{ id: string; ack: string; payload: any; tries: number } | undefined> {
+  async get(opts?: { visibility?: number; retryCount?: number; sorted?: boolean }): Promise<{ id: string; ack: string; payload: any; tries: number } | undefined> {
     const visibility = opts?.visibility ?? this.visibility
     const retryCount = opts?.retryCount ?? 0
 
@@ -166,7 +168,11 @@ export class Queue {
         visible: nowPlusSecs(visibility),
       },
     }
-    const options: FindOneAndUpdateOptions = { sort: { _id: 1 }, returnDocument: 'after' }
+    const options: FindOneAndUpdateOptions = { returnDocument: 'after' }
+
+    if (opts?.sorted) {
+      options.sort = { _id: 1 }
+    }
 
     const msg = await this.collection.findOneAndUpdate(query, update, options)
     if (!msg) return undefined

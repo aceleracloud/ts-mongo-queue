@@ -224,6 +224,31 @@ describe('Queue', () => {
     })
   })
 
+  it('should get the next available message from the queue with sort', async () => {
+    const queue = new Queue(dbMock as any, 'test-queue')
+
+    const mockMsg = {
+      _id: new ObjectId(),
+      visible: now(),
+      payload: { data: 'test' },
+      ack: id(),
+      tries: 1,
+    }
+
+    collectionMock.findOneAndUpdate.mockResolvedValueOnce(mockMsg)
+
+    const result = await queue.get({
+      sorted: true,
+    })
+
+    expect(result).toEqual({
+      id: mockMsg._id.toHexString(),
+      ack: mockMsg.ack,
+      payload: mockMsg.payload,
+      tries: mockMsg.tries,
+    })
+  })
+
   it('should get the next available message from the queue with options', async () => {
     const queue = new Queue(dbMock as any, 'test-queue')
 
