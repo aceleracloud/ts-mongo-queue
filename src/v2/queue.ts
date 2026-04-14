@@ -10,6 +10,7 @@ export class QueueV2 {
   private delay?: number
   private deadQueue?: QueueV2
   private maxRetries?: number
+  private messageTtlSeconds?: number
 
   /**
    * Constructs a new Mongo Queue.
@@ -17,7 +18,7 @@ export class QueueV2 {
    * @param name - The name of the queue.
    * @param opts - Queue options.
    */
-  constructor(db: Db, name: string, opts?: { visibility?: number; delay?: number; deadQueue?: QueueV2; maxRetries?: number }) {
+  constructor(db: Db, name: string, opts?: { visibility?: number; delay?: number; deadQueue?: QueueV2; maxRetries?: number; messageTtlSeconds?: number }) {
     if (!db) {
       throw new Error('MongoQueue: provide a mongodb.MongoClient.db')
     }
@@ -31,6 +32,8 @@ export class QueueV2 {
     this.visibility = opts?.visibility ?? 60
     this.delay = opts?.delay
     this.maxRetries = opts?.maxRetries ?? 5
+
+    this.messageTtlSeconds = opts?.messageTtlSeconds
 
     if (opts?.deadQueue) {
       this.deadQueue = opts.deadQueue
@@ -47,6 +50,7 @@ export class QueueV2 {
       delay: this.delay,
       deadQueue: this.deadQueue,
       maxRetries: this.maxRetries,
+      messageTtlSeconds: this.messageTtlSeconds,
     }
   }
 
@@ -56,6 +60,9 @@ export class QueueV2 {
   async createIndexes(): Promise<void> {
     await this.collection.createIndex({ deleted: 1, visible: 1 })
     await this.collection.createIndex({ ack: 1 }, { unique: true, sparse: true })
+    if (this.messageTtlSeconds) {
+      await this.collection.createIndex({ createdAt: 1 }, { expireAfterSeconds: this.messageTtlSeconds })
+    }
   }
 
   /**
@@ -69,6 +76,7 @@ export class QueueV2 {
     const visible = delay ? nowPlusSecs(delay) : now()
 
     const msg = {
+      createdAt: now(),
       visible: visible,
       payload: payload,
       ack: id(),
@@ -95,7 +103,9 @@ export class QueueV2 {
   async addMany(payloads: any[], opts?: { delay?: number }): Promise<Array<{ _id: string; ack: string; payload: any }>> {
     const delay = opts?.delay ?? this.delay
     const visible = delay ? nowPlusSecs(delay) : now()
+    const createdAt = now()
     const msgs = payloads.map(payload => ({
+      createdAt,
       visible,
       payload,
       ack: id(),

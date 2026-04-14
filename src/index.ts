@@ -9,7 +9,7 @@ export const MongoQueue = (db: Db, name: string, opts?: { visibility?: number; d
 
 export type Queue = InnerQueue
 
-export const MongoQueueV2 = (db: Db, name: string, opts?: { visibility?: number; delay?: number; deadQueue?: QueueV2; maxRetries?: number }) => {
+export const MongoQueueV2 = (db: Db, name: string, opts?: { visibility?: number; delay?: number; deadQueue?: QueueV2; maxRetries?: number; messageTtlSeconds?: number }) => {
   return new InnerQueueV2(db, name, opts)
 }
 

@@ -64,15 +64,28 @@ describe('QueueV2', () => {
       delay: 60,
       deadQueue: new QueueV2(dbMock as any, 'test-queue-dead'),
       maxRetries: 5,
+      messageTtlSeconds: undefined,
     }
 
-    const queue = new QueueV2(dbMock as any, 'test-queue', options)
+    const queue = new QueueV2(dbMock as any, 'test-queue', {
+      visibility: 120,
+      delay: 60,
+      deadQueue: options.deadQueue,
+      maxRetries: 5,
+    })
 
     const expected = queue.getOptions()
     expect(expected).toEqual(options)
   })
 
-  it('should create indexes', async () => {
+  it('should construct with messageTtlSeconds option', async () => {
+    const queue = new QueueV2(dbMock as any, 'test-queue', { messageTtlSeconds: 3600 })
+
+    const options = queue.getOptions()
+    expect(options.messageTtlSeconds).toBe(3600)
+  })
+
+  it('should create indexes without TTL when messageTtlSeconds is not set', async () => {
     const queue = new QueueV2(dbMock as any, 'test-queue')
     await queue.createIndexes()
 
@@ -80,6 +93,17 @@ describe('QueueV2', () => {
 
     expect(collectionMock.createIndex).toHaveBeenNthCalledWith(1, { deleted: 1, visible: 1 })
     expect(collectionMock.createIndex).toHaveBeenNthCalledWith(2, { ack: 1 }, { unique: true, sparse: true })
+  })
+
+  it('should create TTL index when messageTtlSeconds is set', async () => {
+    const queue = new QueueV2(dbMock as any, 'test-queue', { messageTtlSeconds: 3600 })
+    await queue.createIndexes()
+
+    expect(collectionMock.createIndex).toHaveBeenCalledTimes(3)
+
+    expect(collectionMock.createIndex).toHaveBeenNthCalledWith(1, { deleted: 1, visible: 1 })
+    expect(collectionMock.createIndex).toHaveBeenNthCalledWith(2, { ack: 1 }, { unique: true, sparse: true })
+    expect(collectionMock.createIndex).toHaveBeenNthCalledWith(3, { createdAt: 1 }, { expireAfterSeconds: 3600 })
   })
 
   it('should add a message to the queue', async () => {
@@ -94,6 +118,7 @@ describe('QueueV2', () => {
     const { _id, ack, payload: resultPayload } = await queue.add(payload)
 
     expect(collectionMock.insertOne).toHaveBeenCalledWith({
+      createdAt: expect.any(Date),
       visible: expect.any(Date),
       payload: payload,
       ack: expect.any(String),
@@ -116,6 +141,7 @@ describe('QueueV2', () => {
     const { _id, ack, payload: resultPayload } = await queue.add(payload, { delay: 60 })
 
     expect(collectionMock.insertOne).toHaveBeenCalledWith({
+      createdAt: expect.any(Date),
       visible: expect.any(Date),
       payload: payload,
       ack: expect.any(String),
